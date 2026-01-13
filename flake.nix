@@ -23,7 +23,7 @@
         tilt = prev.tilt.overrideAttrs (_old: {
           src = tilt-src;
           # Set a real hash after first build.
-          vendorHash = prev.lib.fakeSha256;
+          vendorHash = null;
         });
       };
 
