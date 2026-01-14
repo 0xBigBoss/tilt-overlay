@@ -20,11 +20,24 @@
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in {
       overlays.default = final: prev: {
-        tilt = prev.tilt.overrideAttrs (_old: {
-          src = tilt-src;
-          # Set a real hash after first build.
-          vendorHash = null;
-        });
+        tilt = prev.tilt.overrideAttrs (old:
+          let
+            tiltAssets =
+              (prev.callPackage "${prev.path}/pkgs/by-name/ti/tilt/assets.nix" {
+                src = tilt-src;
+                version = old.version;
+              }).overrideAttrs (assetsOld: {
+                yarnOfflineCache = assetsOld.yarnOfflineCache.overrideAttrs (_: {
+                  outputHash = "sha256-duiMc4XIUKHDJOli6+IGz7+fVq4sKY7isKl/D7mTY9E=";
+                });
+              });
+          in {
+            src = tilt-src;
+            preBuild = ''
+              mkdir -p pkg/assets/build
+              cp -r ${tiltAssets}/* pkg/assets/build/
+            '';
+          });
       };
 
       packages = forAllSystems (system:
