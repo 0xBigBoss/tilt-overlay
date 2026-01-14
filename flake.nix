@@ -22,6 +22,13 @@
       overlays.default = final: prev: {
         tilt = prev.tilt.overrideAttrs (old:
           let
+            tiltRev = tilt-src.rev or "unknown";
+            tiltLastModified = tilt-src.lastModifiedDate or null;
+            tiltDate =
+              if tiltLastModified == null then
+                null
+              else
+                "${builtins.substring 0 4 tiltLastModified}-${builtins.substring 4 2 tiltLastModified}-${builtins.substring 6 2 tiltLastModified}T${builtins.substring 8 2 tiltLastModified}:${builtins.substring 10 2 tiltLastModified}:${builtins.substring 12 2 tiltLastModified}Z";
             tiltAssets =
               (prev.callPackage "${prev.path}/pkgs/by-name/ti/tilt/assets.nix" {
                 src = tilt-src;
@@ -33,6 +40,12 @@
               });
           in {
             src = tilt-src;
+            version = old.version;
+            tags = (old.tags or []) ++ [ "osusergo" ];
+            ldflags =
+              old.ldflags
+              ++ (if tiltDate == null then [] else [ "-X main.date=${tiltDate}" ])
+              ++ [ "-X github.com/tilt-dev/tilt/internal/cli.commitSHA=${tiltRev}" ];
             preBuild = ''
               mkdir -p pkg/assets/build
               cp -r ${tiltAssets}/* pkg/assets/build/
