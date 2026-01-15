@@ -25,11 +25,11 @@
     "tilt-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1767629532,
-        "narHash": "sha256-dS9Sh2XdwgaGmUGXAd29ojf6w2yIyAp2uE6MX5a1Zko=",
+        "lastModified": 1768014768,
+        "narHash": "sha256-k6SXwovl5fOXF6f0n1yhLB4PcySqFhUZbSlgCVV8A9I=",
         "owner": "0xbigboss",
         "repo": "tilt",
-        "rev": "41cc177b2a87d33a45d236fa20b1518f46a8aca3",
+        "rev": "bc6196548370bcda950573a561b95d3d36e97553",
         "type": "github"
       },
       "original": {
