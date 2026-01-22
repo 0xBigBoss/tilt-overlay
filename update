@@ -1,0 +1,195 @@
+#!/usr/bin/env nix-shell
+#! nix-shell -p curl jq coreutils -i bash
+# shellcheck shell=bash
+set -eo pipefail
+
+# Script to update the sources.json file with the latest Tilt releases
+
+# Default to latest if not specified
+RELEASE_TYPE=${1:-latest}
+
+# GitHub API endpoint for releases
+if [[ "$RELEASE_TYPE" == "latest" ]]; then
+  RELEASES_URL="https://api.github.com/repos/tilt-dev/tilt/releases/latest"
+else
+  # For specific versions, use the provided version
+  RELEASES_URL="https://api.github.com/repos/tilt-dev/tilt/releases/tags/v$RELEASE_TYPE"
+fi
+
+# Platforms we support
+PLATFORMS=(
+  "aarch64-darwin"
+  "aarch64-linux"
+  "x86_64-darwin"
+  "x86_64-linux"
+)
+
+# Mapping from our platform names to Tilt's archive naming
+get_platform_name() {
+  local platform=$1
+  case "$platform" in
+  "aarch64-darwin") echo "mac.arm64" ;;
+  "aarch64-linux") echo "linux.arm64" ;;
+  "x86_64-darwin") echo "mac.x86_64" ;;
+  "x86_64-linux") echo "linux.x86_64" ;;
+  *) echo "unknown" ;;
+  esac
+}
+
+# Check required tools
+for cmd in curl jq nix-prefetch-url; do
+  if ! command -v $cmd &>/dev/null; then
+    echo "Error: Required command '$cmd' not found"
+    exit 1
+  fi
+done
+
+# Get release info from GitHub
+echo "Fetching $RELEASE_TYPE release information..."
+RELEASE_INFO=$(curl -s "$RELEASES_URL")
+
+# Get version/tag info
+TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
+if [[ "$TAG" == "null" ]]; then
+  echo "Error: Could not get tag information"
+  exit 1
+fi
+
+# Extract the version number (remove 'v' prefix)
+VERSION="${TAG#v}"
+
+echo "Processing $RELEASE_TYPE release: $TAG (version: $VERSION)"
+
+# The base URL for downloading the archives
+BASE_URL="https://github.com/tilt-dev/tilt/releases/download/$TAG"
+
+# Download and verify checksums
+echo "Downloading checksums.txt..."
+CHECKSUMS_URL="$BASE_URL/checksums.txt"
+CHECKSUMS=$(curl -sL "$CHECKSUMS_URL")
+
+# Create a temporary file for our updated JSON
+TMP_JSON=$(mktemp)
+
+# Create a temporary directory to hold platform data files
+TMP_DIR=$(mktemp -d)
+
+# Create JSON objects for each platform
+for platform in "${PLATFORMS[@]}"; do
+  platform_name=$(get_platform_name "$platform")
+  archive_name="tilt.$VERSION.$platform_name.tar.gz"
+  url="$BASE_URL/$archive_name"
+
+  echo "Processing: $platform ($archive_name)..."
+
+  # Get expected SHA256 from checksums.txt
+  expected_sha256=$(echo "$CHECKSUMS" | grep " $archive_name$" | awk '{print $1}')
+  if [[ -z "$expected_sha256" ]]; then
+    echo "Error: Could not find checksum for $archive_name"
+    exit 1
+  fi
+
+  # Download and verify checksum
+  echo "Downloading: $url"
+  archive_file="$TMP_DIR/$archive_name"
+  curl -sL -o "$archive_file" "$url"
+
+  # Compute actual SHA256 and verify against expected
+  actual_sha256=$(sha256sum "$archive_file" | awk '{print $1}')
+  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+    echo "Error: Checksum mismatch for $archive_name"
+    echo "  Expected: $expected_sha256"
+    echo "  Actual:   $actual_sha256"
+    exit 1
+  fi
+  echo "Checksum verified for $platform"
+
+  # Compute nix hash from verified file
+  hash=$(nix-hash --type sha256 --flat --base32 "$archive_file")
+
+  # Store in temp file
+  jq -n \
+    --arg url "$url" \
+    --arg hash "$hash" \
+    '{ "url": $url, "sha256": $hash }' >"$TMP_DIR/$platform.json"
+done
+
+# Build our JSON
+# For latest release, update both "latest" and the version-specific key
+if [[ "$RELEASE_TYPE" == "latest" ]]; then
+  jq -n \
+    --arg version "$VERSION" \
+    --arg tag "$TAG" \
+    --argjson platforms "$(
+      jq -n \
+        --argjson aarch64_darwin "$(cat "$TMP_DIR/aarch64-darwin.json")" \
+        --argjson aarch64_linux "$(cat "$TMP_DIR/aarch64-linux.json")" \
+        --argjson x86_64_darwin "$(cat "$TMP_DIR/x86_64-darwin.json")" \
+        --argjson x86_64_linux "$(cat "$TMP_DIR/x86_64-linux.json")" \
+        '{
+          "aarch64-darwin": $aarch64_darwin,
+          "aarch64-linux": $aarch64_linux,
+          "x86_64-darwin": $x86_64_darwin,
+          "x86_64-linux": $x86_64_linux
+        }'
+    )" \
+    '{
+      "latest": {
+        "version": $version,
+        "tag": $tag,
+        "platforms": $platforms
+      },
+      ($version): {
+        "version": $version,
+        "tag": $tag,
+        "platforms": $platforms
+      }
+    }' >"$TMP_JSON"
+else
+  jq -n \
+    --arg version "$VERSION" \
+    --arg tag "$TAG" \
+    --argjson platforms "$(
+      jq -n \
+        --argjson aarch64_darwin "$(cat "$TMP_DIR/aarch64-darwin.json")" \
+        --argjson aarch64_linux "$(cat "$TMP_DIR/aarch64-linux.json")" \
+        --argjson x86_64_darwin "$(cat "$TMP_DIR/x86_64-darwin.json")" \
+        --argjson x86_64_linux "$(cat "$TMP_DIR/x86_64-linux.json")" \
+        '{
+          "aarch64-darwin": $aarch64_darwin,
+          "aarch64-linux": $aarch64_linux,
+          "x86_64-darwin": $x86_64_darwin,
+          "x86_64-linux": $x86_64_linux
+        }'
+    )" \
+    '{
+      ($version): {
+        "version": $version,
+        "tag": $tag,
+        "platforms": $platforms
+      }
+    }' >"$TMP_JSON"
+fi
+
+# Check if we need to merge with existing sources.json or create a new one
+if [[ -f sources.json ]]; then
+  echo "Merging with existing sources.json..."
+
+  # Create a backup of the current sources.json
+  cp sources.json sources.json.bak
+
+  # Merge the new JSON with the existing one
+  jq -s '.[0] * .[1]' sources.json "$TMP_JSON" >sources.json.new
+  mv sources.json.new sources.json
+else
+  echo "Creating new sources.json..."
+  mv "$TMP_JSON" sources.json
+fi
+
+# Clean up
+rm -f "$TMP_JSON"
+rm -rf "$TMP_DIR"
+rm -f sources.json.bak
+
+echo "Update completed successfully!"
+echo "Updated $RELEASE_TYPE to version $VERSION in sources.json"

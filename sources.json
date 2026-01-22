@@ -1,0 +1,46 @@
+{
+  "latest": {
+    "version": "0.36.1",
+    "tag": "v0.36.1",
+    "platforms": {
+      "aarch64-darwin": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.mac.arm64.tar.gz",
+        "sha256": "071xz3jy8hpjmp38anpacdsj5cpi8q4lm26bplafpmvqipnpl9n5"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.linux.arm64.tar.gz",
+        "sha256": "021c13ipva8s73wafhdkwwq2cbx8d9l9a2sgkwli4c9bb5wabd71"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.mac.x86_64.tar.gz",
+        "sha256": "1rkl2rd3j6vid9pz3gwgkiqhnhqrqajhsz880y2gjyvsbxk16fgz"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.linux.x86_64.tar.gz",
+        "sha256": "1g8q0nzqf4a26vndnfslr54yhrfk9aw18z108ixmxrjcs58ngk4d"
+      }
+    }
+  },
+  "0.36.1": {
+    "version": "0.36.1",
+    "tag": "v0.36.1",
+    "platforms": {
+      "aarch64-darwin": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.mac.arm64.tar.gz",
+        "sha256": "071xz3jy8hpjmp38anpacdsj5cpi8q4lm26bplafpmvqipnpl9n5"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.linux.arm64.tar.gz",
+        "sha256": "021c13ipva8s73wafhdkwwq2cbx8d9l9a2sgkwli4c9bb5wabd71"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.mac.x86_64.tar.gz",
+        "sha256": "1rkl2rd3j6vid9pz3gwgkiqhnhqrqajhsz880y2gjyvsbxk16fgz"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/tilt-dev/tilt/releases/download/v0.36.1/tilt.0.36.1.linux.x86_64.tar.gz",
+        "sha256": "1g8q0nzqf4a26vndnfslr54yhrfk9aw18z108ixmxrjcs58ngk4d"
+      }
+    }
+  }
+}
