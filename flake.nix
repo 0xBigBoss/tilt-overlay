@@ -51,8 +51,8 @@
     outputs
     // {
       overlays.default = final: prev: {
-        tiltPackages = outputs.packages.${prev.system};
-        tilt = outputs.packages.${prev.system}.tilt;
+        tiltPackages = outputs.packages.${prev.stdenv.hostPlatform.system};
+        tilt = outputs.packages.${prev.stdenv.hostPlatform.system}.tilt;
       };
     };
 }
